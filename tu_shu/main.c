@@ -23,7 +23,7 @@ void userMenu(UserPtr userHead, BookPtr bookHead, RecordPtr recordHead);      /*
 void searchBook(BookPtr bookHead);                                            /* 图书查询 */
 void borrowBook(UserPtr currentUser, BookPtr bookHead, RecordPtr recordHead); /* 图书借阅 */
 void returnBook(UserPtr currentUser, BookPtr bookHead, RecordPtr recordHead); /* 图书归还 */
-void showMyRecords(UserPtr currentUser, RecordPtr recordHead);                /* 借阅查询 */
+int showMyRecords(UserPtr currentUser, RecordPtr recordHead);                 /* 借阅查询 */
 int adminLogin(void);                                                         /* 管理员登录 */
 UserPtr userLogin(UserPtr userHead, BookPtr bookHead, RecordPtr recordHead);  /* 用户登录：成功返回用户节点，失败返回 NULL */
 
@@ -33,6 +33,7 @@ int main(void)
 {
     UserPtr userHead = createUserHead();
     insertUserHead(userHead, createUserNode("z", "z"));
+    insertUserHead(userHead, createUserNode("y", "y"));
     // traverseUserList(userHead);
     BookPtr bookHead = createBookHead();
     insertBookTail(bookHead, createBookNode(100001, "C语言程序设计", "王道", "清华大学出版社", 2023, 100));
@@ -48,7 +49,7 @@ int main(void)
     insertRecordTail(recordHead, createRecordNode("z", 100003, "算法", "2023-01-02", 0));
     insertRecordTail(recordHead, createRecordNode("z", 100004, "数据库", "2023-01-02", 0));
     insertRecordTail(recordHead, createRecordNode("z", 100005, "操作系统", "2023-01-02", 0));
-    insertRecordTail(recordHead, createRecordNode("z", 100006, "网络", "2023-01-02", 0));
+    insertRecordTail(recordHead, createRecordNode("y", 100006, "网络", "2023-01-02", 0));
     // traverseRecordList(recordHead);
     int identity; /* 存放身份选择 */
 
@@ -542,7 +543,6 @@ void searchBook(BookPtr bookHead)
         choice = -1;
     while ((c = getchar()) != '\n' && c != EOF)
         ; /* 不管选了什么先把这行残留清掉，后面的输入才不会被毒害 */
-
     if (choice == 0)
         return;
     if (choice < 1 || choice > 4)
@@ -577,6 +577,8 @@ void searchBook(BookPtr bookHead)
 // 借阅图书
 void borrowBook(UserPtr currentUser, BookPtr bookHead, RecordPtr recordHead)
 {
+    printf("查看图书：");
+    showBookPage(bookHead);
     int id = 0;
     id = getIntInput("请输入要借阅的图书ID（6位数字）：", 6);
     if (id == 0)
@@ -584,10 +586,8 @@ void borrowBook(UserPtr currentUser, BookPtr bookHead, RecordPtr recordHead)
         // printf("已取消图书借阅，返回上级菜单\n");
         return;
     }
-    // printf("请输入要借阅的图书ID：");
-    // if (scanf("%d", &id) != 1)
-    //     id = -1; /* 非数字输入时强制查不到，走"图书不存在"分支 */
     BookPtr s = findBookNodeById(bookHead, id);
+    // RecordPtr p = findRecordNode(recordHead, currentUser->name);
     if (s == NULL)
     {
         printf("图书不存在！\n");
@@ -598,27 +598,55 @@ void borrowBook(UserPtr currentUser, BookPtr bookHead, RecordPtr recordHead)
         printf("图书库存不足！\n");
         return;
     }
+    RecordPtr p = recordHead->next;
+    while (p != recordHead)
+    {
+        if (strcmp(p->userName, currentUser->name) == 0 && p->returned == 0 && s->id == p->bookId)
+        {
+            printf("您已经借阅过这本书\n");
+            return;
+            // found++;
+        }
+        p = p->next;
+    }
     char time[64] = {0};
-    getCurrentTime(time, sizeof(time)); /* 直接把 buf 传进去填时间，不再 strcpy */
+    getCurrentTime(time, sizeof(time)); 
     insertRecordTail(recordHead, createRecordNode(currentUser->name, id, s->title, time, 0));
     s->stock--;
-    traverseRecordList(recordHead);
-    printf("图书借阅成功！\n");
+    printf("图书借阅成功！\n\n");
+    printf("是否继续借阅(1.是 0.否)：");
+    int choice = 0;
+    if (scanf("%d", &choice) != 1)
+        choice = -1;
+    int c2;
+    while ((c2 = getchar()) != '\n' && c2 != EOF)
+        ;
+    if (choice == 1)
+    {
+        borrowBook(currentUser, bookHead, recordHead); 
+    }
+    else if (choice == 0)
+    {
+        printf("已取消借阅图书，返回上级菜单\n");
+    }
+    else
+    {
+        printf("输入无效，请重新选择！\n");
+    }
 }
 // 归还图书
 void returnBook(UserPtr currentUser, BookPtr bookHead, RecordPtr recordHead)
 {
     int id = 0;
+    int c;
+    printf("当前登录用户为：%s，当前借阅记录如下：\n", currentUser->name);
+    int count = showMyRecords(currentUser, recordHead);
     id = getIntInput("请输入要归还的图书ID（6位数字）：", 6);
     if (id == 0)
     {
         // printf("已取消图书归还，返回上级菜单\n");
         return;
     }
-    // printf("请输入要归还的图书ID：");
-    // if (scanf("%d", &id) != 1)
-    //     id = -1; /* 非数字输入时强制匹配不到，走"无借阅记录"分支 */
-
     /* 在"自己"的记录里找：用户名对 + 书号对 + 还没还过，三个条件同时满足才行 */
     RecordPtr p = recordHead->next;
     while (p != recordHead)
@@ -636,13 +664,32 @@ void returnBook(UserPtr currentUser, BookPtr bookHead, RecordPtr recordHead)
     if (s != NULL)
         s->stock++; /* 图书还在系统里才加库存；就算被管理员删了也只标记归还，不会崩 */
     p->returned = 1;
-    // deleteRecordNode(recordHead, p->userName); /* 函数按用户名查找删除，传 p->userName 而不是节点指针 */
-    traverseRecordList(recordHead);
-    printf("图书归还成功！\n");
+    count--;
+    printf("图书归还成功！\n\n");
+    if (count > 0)
+    {
+        printf("是否继续归还其他图书？（1. 是 2. 否）：");
+        int choice = 0;
+        if (scanf("%d", &choice) != 1)
+            choice = -1;
+        while ((c = getchar()) != '\n' && c != EOF)
+            ; /* 不管选了什么先把这行残留清掉，后面的输入才不会被毒害 */
+        if (choice == 0)
+            return;
+        if (choice < 1 || choice > 2)
+        {
+            printf("输入无效，请重新选择！\n");
+            return;
+        }
+        if (choice == 1)
+            returnBook(currentUser, bookHead, recordHead);
+        else
+            printf("已取消归还其他图书！\n");
+    }
 }
 
 // 查询借阅记录：只显示当前登录用户自己的记录
-void showMyRecords(UserPtr currentUser, RecordPtr recordHead)
+int showMyRecords(UserPtr currentUser, RecordPtr recordHead)
 {
     int found = 0;
     RecordPtr p = recordHead->next;
@@ -650,13 +697,14 @@ void showMyRecords(UserPtr currentUser, RecordPtr recordHead)
     {
         if (strcmp(p->userName, currentUser->name) == 0 && p->returned == 0)
         {
-            printf("%s %d %s %s %d\n", p->userName, p->bookId, p->bookTitle, p->borrowDate, p->returned);
-            found = 1;
+            printf("借阅人：%s, 图书ID：%d, 图书名：%s, 借阅日期：%s, 是否归还：%d\n", p->userName, p->bookId, p->bookTitle, p->borrowDate, p->returned);
+            found++;
         }
         p = p->next;
     }
     if (!found)
         printf("你还没有借阅记录！\n");
+    return found;
 }
 
 // 管理员登陆

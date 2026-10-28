@@ -9,40 +9,40 @@
 typedef struct Book
 {
     struct Book *prev;  // 指向上一个图书
-    int id;             /* 图书编号（删除/更新/借阅都靠它定位） */
-    char title[50];     /* 书名 */
-    char author[30];    /* 作者 */
-    char publisher[30]; /* 出版社 */
-    int year;           /* 出版年份 */
-    int stock;          /* 库存数量：借阅减1，归还加1 */
-    struct Book *next;  /* 指向下一本书 */
+    int id;             // 图书编号（删除/更新/借阅都靠它定位）
+    char title[50];     // 书名
+    char author[30];    // 作者
+    char publisher[30]; // 出版社
+    int year;           // 出版年份
+    int stock;          // 库存数量：借阅减1，归还加1
+    struct Book *next;  // 指向下一本书
 } Book, *BookPtr;
 
-/* 借阅记录节点：每被借一次，就新增一条记录 */
+// 借阅记录节点：每被借一次，就新增一条记录
 typedef struct Record
 {
     struct Record *prev; // 指向上一个记录
-    char userName[20];   /* 谁借的 */
-    int bookId;          /* 借的是哪本（存编号） */
-    char bookTitle[50];  /* 书名冗余存一份，打印记录时不用回图书链表里找 */
-    char borrowDate[15]; /* 借阅日期 */
-    int returned;        /* 归还标记：0=未归还，1=已归还 */
-    struct Record *next; /* 指向下一条记录 */
+    char userName[20];   // 谁借的
+    int bookId;          // 借的是哪本（存编号）
+    char bookTitle[50];  // 书名冗余存一份，打印记录时不用回图书链表里找
+    char borrowDate[15]; // 借阅日期
+    int returned;        // 归还标记：0=未归还，1=已归还
+    struct Record *next; // 指向下一条记录
 } Record, *RecordPtr;
 
-/* 用户节点：给"管理员管理用户信息"用 */
+// 用户节点：给"管理员管理用户信息"用
 typedef struct User
 {
     struct User *prev; // 指向上一个用户
-    char name[20];     /* 用户名（登录和借阅记录都靠它关联） */
-    char password[20]; /* 密码（登录时验证） */
-    struct User *next; /* 指向下一个用户 */
+    char name[20];     // 用户名（登录和借阅记录都靠它关联）
+    char password[20]; // 密码（登录时验证）
+    struct User *next; // 指向下一个用户
 } User, *UserPtr;
 
-/* 三条链表各有一个头指针，NULL 表示空表 */
+// 三条链表各有一个头指针，NULL 表示空表
 // struct Book *bookHead = NULL;     /* 图书链表 */
-// struct Record *recordHead = NULL; /* 借阅记录链表 */
-// struct User *userHead = NULL;     /* 用户链表 */
+// struct Record *recordHead = NULL; // 借阅记录链表
+// struct User *userHead = NULL;     // 用户链表
 
 // 创建用户节点
 UserPtr createUserNode(char *name, char *password)
@@ -248,7 +248,7 @@ void insertBookTail(BookPtr head, BookPtr newNode)
 BookPtr findBookNodeById(BookPtr head, int id)
 {
     if (bookIsEmpty(head))
-        return NULL; /* 空表直接返回找不到，不要只打印不返回 */
+        return NULL; // 空表直接返回找不到，不要只打印不返回
     BookPtr s = head->next;
     while (s != head)
     {
@@ -267,7 +267,7 @@ int searchBooksByField(BookPtr head, int field, char *keyword)
     BookPtr s = head->next;
     while (s != head)
     {
-        int match = 0; /* 这个节点匹不匹配，先算出来再决定 */
+        int match = 0; // 这个节点匹不匹配，先算出来再决定
         switch (field)
         {
         case 1:
@@ -291,6 +291,60 @@ int searchBooksByField(BookPtr head, int field, char *keyword)
         s = s->next;
     }
     return count;
+}
+
+// 查找图书上一页下一页功能
+void showBookPage(BookPtr bookHead)
+{
+    if (bookIsEmpty(bookHead))
+    {
+        printf("图书链表为空！\n");
+        return;
+    }
+
+    // 第 1 步：数总数，算总页数
+    int total = 0;
+    BookPtr s = bookHead->next;
+    while (s != bookHead)
+    {
+        total++;
+        s = s->next;
+    }
+
+    int pageSize = 3;                                   // 每页 3 本，调小方便测试
+    int totalPages = (total + pageSize - 1) / pageSize; // 向上取整：7本/3 = 3页
+    int page = 1;                                       // 当前页码，从 1 开始
+
+    while (1)
+    {
+        // 第 2 步：按"下标区间"只打印当前页那一小段
+        int start = (page - 1) * pageSize; // 本页第一本的下标
+        printf("---- 第 %d/%d 页 ----\n", page, totalPages);
+        int i = 0;
+        s = bookHead->next;
+        while (s != bookHead && i < start + pageSize)
+        {
+            if (i >= start)
+                printf("%d %s %s %s %d %d\n", s->id, s->title, s->author, s->publisher, s->year, s->stock);
+            i++;
+            s = s->next;
+        }
+
+        // 第 3 步：手动输入翻页
+        printf("1.下一页 2.上一页 0.退出：");
+        int cmd = 0, c;
+        if (scanf("%d", &cmd) != 1)
+            cmd = -1;
+        while ((c = getchar()) != '\n' && c != EOF);
+        if (cmd == 0)
+            break;
+        else if (cmd == 1 && page < totalPages)
+            page++;
+        else if (cmd == 2 && page > 1)
+            page--;
+        else
+            printf("已经到底/到顶了！\n");
+    }
 }
 
 // 删除图书
@@ -403,27 +457,32 @@ RecordPtr findRecordNode(RecordPtr head, char *name)
     RecordPtr s = head->next;
     while (s != head)
     {
-
         if (strcmp(s->userName, name) == 0 && s->returned == 0)
         {
-            // printf("%s %d %s %s %d\n", s->userName, s->bookId, s->bookTitle, s->borrowDate, s->returned);
-            // s = s->next;
             printf("\n");
         }
         s = s->next;
-        // if (s == head)
-        // {
-        //     return NULL;
-        // }
-        // else
-        // {
-        //     return s;
-        // }
     }
     return s;
 }
 
 // 查找所有借阅记录
+int showAllRecords(RecordPtr head)
+{
+    if (recordIsEmpty(head))
+    {
+        printf("链表为空");
+    }
+    RecordPtr s = head->next;
+    while (s != head)
+    {
+        printf("%s %d %s %s %d\n", s->userName, s->bookId, s->bookTitle, s->borrowDate, s->returned);
+        s = s->next;
+    }
+    printf("\n");
+    return 0;
+}
+
 //  删除借阅记录
 void deleteRecordNode(RecordPtr head, char *name)
 {
@@ -473,10 +532,10 @@ int checkNum(int integer, int n)
     int i;
     sprintf(buf, "%d", integer);
 
-    if (strlen(buf) < n) /* 检查1：长度够不够 */
+    if (strlen(buf) < n) // 检查1：长度够不够
         return 0;
 
-    for (i = 0; buf[i] != '\0'; i++) /* 检查2：逐个字符必须是数字（负数的'-'会被拦下） */
+    for (i = 0; buf[i] != '\0'; i++) // 检查2：逐个字符必须是数字（负数的'-'会被拦下）
     {
         if (buf[i] < '0' || buf[i] > '9')
             return 0;
@@ -495,13 +554,13 @@ int getIntInput(char *prompt, int digit)
         printf("%s(输入0结束)", prompt);
         int ret = scanf("%d", &integer);
         while ((c = getchar()) != '\n' && c != EOF)
-            ; /* 不管成败先把这一行吃干净，残留会毒害下一次 scanf */
+            ; // 不管成败先把这一行吃干净，残留会毒害下一次 scanf
         if (ret == EOF)
             return 0;
         if (ret == 1)
         {
             if (integer == 0)
-                return 0; /* 0 = 用户取消；提示语由调用方按语境自己打 */
+                return 0; // 0 = 用户取消；提示语由调用方按语境自己打
             if (checkNum(integer, digit))
                 return integer;
         }
