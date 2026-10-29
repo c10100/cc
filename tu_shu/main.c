@@ -31,6 +31,7 @@ UserPtr userLogin(UserPtr userHead, BookPtr bookHead, RecordPtr recordHead);  /*
 
 int main(void)
 {
+    setvbuf(stdout, NULL, _IONBF, 0);
     UserPtr userHead = createUserHead();
     insertUserHead(userHead, createUserNode("z", "z"));
     insertUserHead(userHead, createUserNode("y", "y"));
@@ -325,8 +326,8 @@ void deleteBook(BookPtr bookHead)
     //     printf("输入无效，请重新选择！\n");
     //     id = -1;
     // } /* 非数字输入时强制查不到，走"图书不存在"分支 */
-    while ((c = getchar()) != '\n' && c != EOF)
-        ;
+    // while ((c = getchar()) != '\n' && c != EOF)
+    //     ;
     BookPtr p = findBookNodeById(bookHead, id);
     if (p == NULL)
     {
@@ -362,8 +363,8 @@ void updateBook(BookPtr bookHead)
         // printf("已取消图书更新，返回上级菜单\n");
         return;
     }
-    while ((c = getchar()) != '\n' && c != EOF)
-        ;
+    // while ((c = getchar()) != '\n' && c != EOF)
+    //     ;
     BookPtr p = findBookNodeById(bookHead, id);
     if (p == NULL)
     {
@@ -443,6 +444,11 @@ void addUser(UserPtr userHead, BookPtr bookHead, RecordPtr recordHead)
     char password[20] = {0};
     printf("请输入用户名：");
     scanf("%19s", name);
+    if(findUserNode(userHead, name) != NULL)
+    {
+        printf("用户名已存在！\n");
+        return;
+    }
     printf("请输入密码：");
     scanf("%19s", password);
     if (strcmp(name, "-1") == 0 && strcmp(password, "-1") == 0)
